@@ -23,6 +23,7 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -31,6 +32,10 @@ import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -39,6 +44,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 public class AndroidCameraApi extends AppCompatActivity {
     private static final String TAG = "AndroidCameraApi";
@@ -64,7 +70,10 @@ public class AndroidCameraApi extends AppCompatActivity {
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private byte[] bytes;
-
+    private byte[] rawImagebBytes;
+    private Size[] rawSizes ;
+    private JSONObject JsonData = new JSONObject();
+    private Date date;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,7 +131,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         @Override
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
             super.onCaptureCompleted(session, request, result);
-            Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
+            Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT ).show();
             createCameraPreview();
         }
     };
@@ -146,9 +155,51 @@ public class AndroidCameraApi extends AppCompatActivity {
             Log.e(TAG, "cameraDevice is null");
             return;
         }
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        CameraManager cameraManager   = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
+
+            // for the Raw Data
+            if (characteristics != null) {
+                rawSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
+            }
+            // the size of width and height %change
+            ImageReader rawImageReader = ImageReader.newInstance(640, 480, ImageFormat.RAW_SENSOR, 1);
+            ImageReader.OnImageAvailableListener rawImageReaderListener = new ImageReader.OnImageAvailableListener() {
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Image image = null;
+                    try {
+                        image = reader.acquireLatestImage();
+                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                        rawImagebBytes = new byte[buffer.capacity()];
+                        buffer.get(rawImagebBytes);
+                        save(rawImagebBytes);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        if (image != null) {
+                            image.close();
+                        }
+                    }
+                }
+                private void save(byte[] bytes) throws IOException {
+                    OutputStream output = null;
+                    try {
+                        output = new FileOutputStream(file);
+                        output.write(bytes);
+                    } finally {
+                        if (null != output) {
+                            output.close();
+                        }
+                    }
+                }
+            };
+            // for the end of Raw Data
+
+            // for jpeg to save
             Size[] jpegSizes = null;
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
@@ -169,7 +220,13 @@ public class AndroidCameraApi extends AppCompatActivity {
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            final File file = new File(Environment.getExternalStorageDirectory()+"/pic.jpg");
+            // creat the file name save to directory
+            date = new Date();
+            String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)+"/Camera/";
+            File newdir = new File(directory);
+            newdir.mkdirs();
+            String filename = date.toString()+".jpg";
+            final File file = new File(directory+filename);
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
@@ -202,6 +259,8 @@ public class AndroidCameraApi extends AppCompatActivity {
                     }
                 }
             };
+            // jpeg end
+
             reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
                 @Override
@@ -258,6 +317,8 @@ public class AndroidCameraApi extends AppCompatActivity {
     }
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+
         Log.e(TAG, "is camera open");
         try {
             cameraId = manager.getCameraIdList()[0];
@@ -324,6 +385,14 @@ public class AndroidCameraApi extends AppCompatActivity {
         //closeCamera();
         stopBackgroundThread();
         super.onPause();
+    }
+
+    private void insertJsonObject(String name){
+        try {
+            JsonData.put(name, Base64.encode(rawImagebBytes,Base64.DEFAULT));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
 }
