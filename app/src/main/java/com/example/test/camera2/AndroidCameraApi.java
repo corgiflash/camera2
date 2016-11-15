@@ -23,7 +23,6 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -34,7 +33,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -76,8 +74,8 @@ public class AndroidCameraApi extends AppCompatActivity {
     private byte[] jpegBytes;
     private byte[] rawImagebBytes;
     private Size[] rawSizes;
-    private JSONObject JsonData = new JSONObject();
     private Date date;
+    private PackJson packJSON;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -251,8 +249,14 @@ public class AndroidCameraApi extends AppCompatActivity {
                         jpegBytes = new byte[buffer.capacity()];
                         buffer.get(jpegBytes);
                         save(jpegBytes);
-
-                        insertJsonObject("Image");
+                        packJSON = new PackJson("Image", jpegBytes);
+                        packJSON.insertJsonObject();
+                        try {
+                            writeToFile(packJSON.jsonObject().toString(2));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        //insertJsonObject("Image",Base64Encoding(jpegBytes));
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -269,6 +273,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                     try {
                         output = new FileOutputStream(file);
                         output.write(bytes);
+
                     } finally {
                         if (null != output) {
                             output.close();
@@ -310,6 +315,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
             assert texture != null;
+            // get the camera's supported output sizes and formats
             texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -328,7 +334,7 @@ public class AndroidCameraApi extends AppCompatActivity {
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    Toast.makeText(AndroidCameraApi.this, "Configuration change", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(AndroidCameraApi.this, "Configuration change", Toast.LENGTH_LONG).show();
                 }
             }, null);
         } catch (CameraAccessException e) {
@@ -346,6 +352,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             CameraCharacteristics cc = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
+            // find out the resolution request
             imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
             // Add permission for camera and let user grant the permission
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -413,25 +420,8 @@ public class AndroidCameraApi extends AppCompatActivity {
         super.onPause();
     }
 
-    // Add a JSON Object
-    // JPEG or RAW imagebytes code convert to ASCII base64
-    private void insertJsonObject(String name) {
-        /*
-        try {
-            JsonData.put(name, Base64.encode(rawImagebBytes,Base64.DEFAULT));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }*/
-        try {
-            String temp =  Base64.encodeToString(jpegBytes, Base64.DEFAULT);
-            String temp2 = JsonData.toString(2);
-            JsonData.put(name, temp);
-            writeToFile(temp2);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
 
+    // test JSONObject on a txt file
     private void writeToFile(String content) {
         try {
             String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/CameraData/";
@@ -454,5 +444,5 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
 
         }
-    }
+    }// end of
 }
