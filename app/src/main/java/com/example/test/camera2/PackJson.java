@@ -23,11 +23,14 @@ public class PackJson {
     private Date date = new Date();
     private int count = 1;
     JSONObject JsonData = new JSONObject();
-    PackJson(String name, byte[] bytes) {
-        this.bytes = bytes;
-        this.name = name;
+    PackJson() {
+        this.name = "Image";
     }
 
+    // Add imageBytes
+    public void addImageBytes(byte[] bytes){
+        this.bytes = bytes;
+    }
     // Add a JSON Object
     // JPEG or RAW imagebytes code convert to ASCII base64
     public void insertJsonObject() {

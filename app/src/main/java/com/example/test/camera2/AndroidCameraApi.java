@@ -75,7 +75,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private byte[] rawImagebBytes;
     private Size[] rawSizes;
     private Date date;
-    private PackJson packJSON;
+    private PackJson packJSON = new PackJson();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -249,7 +249,8 @@ public class AndroidCameraApi extends AppCompatActivity {
                         jpegBytes = new byte[buffer.capacity()];
                         buffer.get(jpegBytes);
                         save(jpegBytes);
-                        packJSON = new PackJson("Image", jpegBytes);
+                        // add the image bytes data to a JSON object
+                        packJSON.addImageBytes(jpegBytes);
                         packJSON.insertJsonObject();
                         try {
                             writeToFile(packJSON.jsonObject().toString(2));
@@ -427,6 +428,8 @@ public class AndroidCameraApi extends AppCompatActivity {
             String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/CameraData/";
             File newdir = new File(directory);
             newdir.mkdirs();
+            /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
+            String time = date.toString().substring(0, 19);*/
             String filename = date.toString() + ".txt";
             File file = new File(directory + filename);
 
