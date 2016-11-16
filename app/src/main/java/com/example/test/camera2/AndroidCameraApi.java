@@ -36,6 +36,7 @@ import org.json.JSONException;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -136,6 +137,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             cameraDevice = null;
         }
     };
+    // Pause for the the saving status
     final CameraCaptureSession.CaptureCallback captureCallbackListener = new CameraCaptureSession.CaptureCallback() {
         @Override
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
@@ -170,7 +172,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
-
+            /* Commend the Raw data format
             // READ as Raw Data
             if (characteristics != null) {
                 rawSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
@@ -210,6 +212,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                     }
                 }
             }; // for the end of Raw Data
+            */
 
             // READ as jpeg and save
             Size[] jpegSizes = null;
@@ -250,10 +253,14 @@ public class AndroidCameraApi extends AppCompatActivity {
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         jpegBytes = new byte[buffer.capacity()];
                         buffer.get(jpegBytes);
-                        save(jpegBytes);
                         // add the image bytes data to a JSON object
                         packJSON.addImageBytes(jpegBytes);
                         packJSON.insertJsonObject();
+
+
+                        save(jpegBytes);
+
+
                         try {
                             writeToFile(packJSON.jsonObject().toString(2));
                         } catch (JSONException e) {
@@ -294,6 +301,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                     createCameraPreview();
                 }
             };
+
             cameraDevice.createCaptureSession(outputSurfaces, new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {
@@ -431,7 +439,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             newdir.mkdirs();
             /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
             String time = date.toString().substring(0, 19);*/
-            String filename = date.toString() + ".txt";
+            String filename = date.toString() + ".json";
             File file = new File(directory + filename);
 
             // if file doesnt exists, then create it
@@ -447,6 +455,26 @@ public class AndroidCameraApi extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
 
+        }
+    }// end of  test JSONObject on a txt file
+
+
+    // test JSONObject on a txt file
+    private String getData(Context context,String filename) {
+        try {
+            String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/CameraData/";
+            /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
+            String time = date.toString().substring(0, 19);*/
+            File file = new File(directory + filename);
+            FileInputStream is = new FileInputStream(file);
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            return new String(buffer);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }// end of  test JSONObject on a txt file
 }

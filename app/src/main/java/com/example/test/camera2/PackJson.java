@@ -23,6 +23,8 @@ public class PackJson {
     private Date date = new Date();
     private int count = 1;
     JSONObject JsonData = new JSONObject();
+    // read the json
+    private ImageData imageData;
     PackJson() {
         this.name = "Image";
     }
@@ -48,6 +50,13 @@ public class PackJson {
     // base64 encoding
     private String Base64Encoding(byte[] bytes){
         return Base64.encodeToString(bytes, Base64.DEFAULT);
+    }
+    private byte[] readJson()
+    {
+        imageData= new ImageData(JsonData);
+        String base64ImageData= imageData.getImageData();
+        byte[] readBytes = null;
+        return readBytes;
     }
 
 }
