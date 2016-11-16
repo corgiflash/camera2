@@ -72,10 +72,11 @@ public class AndroidCameraApi extends AppCompatActivity {
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private byte[] jpegBytes;
-    private byte[] rawImagebBytes;
+    private byte[] rawImageBytes;
     private Size[] rawSizes;
     private Date date;
-    private PackJson packJSON = new PackJson();
+    private PackJson packJSON = new PackJson(); // JSON Object instance
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,9 +184,9 @@ public class AndroidCameraApi extends AppCompatActivity {
                     try {
                         image = reader.acquireLatestImage();
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        rawImagebBytes = new byte[buffer.capacity()];
-                        buffer.get(rawImagebBytes);
-                        save(rawImagebBytes);
+                        rawImageBytes = new byte[buffer.capacity()];
+                        buffer.get(rawImageBytes);
+                        save(rawImageBytes);
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -208,16 +209,17 @@ public class AndroidCameraApi extends AppCompatActivity {
                         }
                     }
                 }
-            };
-            // for the end of Raw Data
+            }; // for the end of Raw Data
 
             // READ as jpeg and save
             Size[] jpegSizes = null;
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            int width = 640;
-            int height = 480;
+            // The resolution: 1920x1080 (1080p)
+            // Other Options: 1280x720 (720p) 640x480 (480p) 320x240 (240p)
+            int width = 1920;
+            int height = 1080;
             if (jpegSizes != null && 0 < jpegSizes.length) {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
@@ -232,7 +234,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            // creat the file name save to directory
+            // create the file name save to directory
             date = new Date();
             String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/Camera/";
             File newdir = new File(directory);
@@ -281,8 +283,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                         }
                     }
                 }
-            };
-            // jpeg end
+            }; // jpeg end
 
             reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
@@ -447,5 +448,5 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
 
         }
-    }// end of
+    }// end of  test JSONObject on a txt file
 }
