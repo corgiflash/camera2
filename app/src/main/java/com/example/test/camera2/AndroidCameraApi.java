@@ -23,6 +23,7 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -33,6 +34,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -42,6 +44,8 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,7 +80,10 @@ public class AndroidCameraApi extends AppCompatActivity {
     private byte[] rawImageBytes;
     private Size[] rawSizes;
     private Date date;
-    private PackJson packJSON = new PackJson(); // JSON Object instance
+
+    private Writer writer;
+
+
 
 
     @Override
@@ -94,6 +101,17 @@ public class AndroidCameraApi extends AppCompatActivity {
                 takePicture();
             }
         });
+
+
+        try {
+            writer = new Writer(9876);
+            InetAddress ipaddress = InetAddress.getByName("172.28.184.169");
+            writer.addAddress(ipaddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -254,18 +272,22 @@ public class AndroidCameraApi extends AppCompatActivity {
                         jpegBytes = new byte[buffer.capacity()];
                         buffer.get(jpegBytes);
                         // add the image bytes data to a JSON object
+                        PackJson packJSON = new PackJson(); // JSON Object instance
                         packJSON.addImageBytes(jpegBytes);
                         packJSON.insertJsonObject();
+                        byte[] temp=getData(packJSON.jsonObject());
+                        save(temp);
+                        //save(jpegBytes);
 
-
-                        save(jpegBytes);
-
-
+                        // TEST the writer
+                        writer.write(packJSON.jsonObject());
+                        Log.e("SSSS", String.valueOf(packJSON.jsonObject()));
+                       // write the bytes to file.
                         try {
                             writeToFile(packJSON.jsonObject().toString(2));
                         } catch (JSONException e) {
                             e.printStackTrace();
-                        }
+                        }// end write the bytes to file
                         //insertJsonObject("Image",Base64Encoding(jpegBytes));
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
@@ -345,6 +367,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
                     Toast.makeText(AndroidCameraApi.this, "Configuration change", Toast.LENGTH_LONG).show();
+                    //  Display the transfer data(not implement yet
                 }
             }, null);
         } catch (CameraAccessException e) {
@@ -439,7 +462,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             newdir.mkdirs();
             /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
             String time = date.toString().substring(0, 19);*/
-            String filename = date.toString() + ".json";
+            String filename = date.toString() + ".txt";
             File file = new File(directory + filename);
 
             // if file doesnt exists, then create it
@@ -460,21 +483,14 @@ public class AndroidCameraApi extends AppCompatActivity {
 
 
     // test JSONObject on a txt file
-    private String getData(Context context,String filename) {
+    private byte[] getData(JSONObject jsonData) {
+            byte[] bytes = null;
         try {
-            String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/CameraData/";
-            /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
-            String time = date.toString().substring(0, 19);*/
-            File file = new File(directory + filename);
-            FileInputStream is = new FileInputStream(file);
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            return new String(buffer);
-        } catch (IOException e) {
+            String temp =jsonData.getString("Image");
+            return Base64.decode(temp,Base64.DEFAULT);
+        } catch (JSONException e) {
             e.printStackTrace();
-            return null;
+            return bytes;
         }
     }// end of  test JSONObject on a txt file
 }
