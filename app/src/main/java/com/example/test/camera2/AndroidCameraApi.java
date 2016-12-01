@@ -191,18 +191,18 @@ public class AndroidCameraApi extends AppCompatActivity {
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
-            // READ as jpeg and save
             Size[] jpegSizes = null;
             if (characteristics != null) {
+                Size[] thumbnailsizes = characteristics.get(CameraCharacteristics.JPEG_AVAILABLE_THUMBNAIL_SIZES);
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
             // The resolution: 1920x1080 (1080p)
             // Other Options: 1280x720 (720p) 640x480 (480p) 320x240 (240p)
-            int width = 320;
-            int height = 240;
+            int width = 1920;
+            int height = 1080;
             if (jpegSizes != null && 0 < jpegSizes.length) {
-                width = jpegSizes[0].getWidth();
-                height = jpegSizes[0].getHeight();
+                width = jpegSizes[7].getWidth();
+                height = jpegSizes[7].getHeight();
             }
             ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
             List<Surface> outputSurfaces = new ArrayList<Surface>(2);
