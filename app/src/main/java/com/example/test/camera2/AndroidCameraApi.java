@@ -71,20 +71,13 @@ public class AndroidCameraApi extends AppCompatActivity {
     protected CaptureRequest.Builder captureRequestBuilder;
     private Size imageDimension;
     private ImageReader imageReader;
-    private File file;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
     private boolean mFlashSupported;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private byte[] jpegBytes;
-    private byte[] rawImageBytes;
-    private Size[] rawSizes;
     private Date date;
-
-    private Writer writer;
-
-
-
+    private File file;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,15 +94,8 @@ public class AndroidCameraApi extends AppCompatActivity {
                 takePicture();
             }
         });
+        // create a instance of udp connection
 
-
-        try {
-            writer = new Writer(9876);
-            InetAddress ipaddress = InetAddress.getByName("172.28.184.169");
-            writer.addAddress(ipaddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
 
     }
@@ -190,48 +176,6 @@ public class AndroidCameraApi extends AppCompatActivity {
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
-            /* Commend the Raw data format
-            // READ as Raw Data
-            if (characteristics != null) {
-                rawSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.RAW_SENSOR);
-            }
-            // the size of width and height %change
-            ImageReader rawImageReader = ImageReader.newInstance(640, 480, ImageFormat.RAW_SENSOR, 1);
-            ImageReader.OnImageAvailableListener rawImageReaderListener = new ImageReader.OnImageAvailableListener() {
-                @Override
-                public void onImageAvailable(ImageReader reader) {
-                    Image image = null;
-                    try {
-                        image = reader.acquireLatestImage();
-                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        rawImageBytes = new byte[buffer.capacity()];
-                        buffer.get(rawImageBytes);
-                        save(rawImageBytes);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (image != null) {
-                            image.close();
-                        }
-                    }
-                }
-
-                private void save(byte[] bytes) throws IOException {
-                    OutputStream output = null;
-                    try {
-                        output = new FileOutputStream(file);
-                        output.write(bytes);
-                    } finally {
-                        if (null != output) {
-                            output.close();
-                        }
-                    }
-                }
-            }; // for the end of Raw Data
-            */
-
             // READ as jpeg and save
             Size[] jpegSizes = null;
             if (characteristics != null) {
@@ -239,8 +183,8 @@ public class AndroidCameraApi extends AppCompatActivity {
             }
             // The resolution: 1920x1080 (1080p)
             // Other Options: 1280x720 (720p) 640x480 (480p) 320x240 (240p)
-            int width = 1920;
-            int height = 1080;
+            int width = 320;
+            int height = 240;
             if (jpegSizes != null && 0 < jpegSizes.length) {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
@@ -268,27 +212,28 @@ public class AndroidCameraApi extends AppCompatActivity {
                     Image image = null;
                     try {
                         image = reader.acquireLatestImage();
-                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        jpegBytes = new byte[buffer.capacity()];
+                        Image.Plane[] planes = image.getPlanes();
+                        ByteBuffer buffer = planes[0].getBuffer();
+                        //int size = buffer.capacity();
+                        int size = buffer.remaining();
+                        jpegBytes = new byte[size];
                         buffer.get(jpegBytes);
-                        // add the image bytes data to a JSON object
-                        PackJson packJSON = new PackJson(); // JSON Object instance
-                        packJSON.addImageBytes(jpegBytes);
-                        packJSON.insertJsonObject();
-                        byte[] temp=getData(packJSON.jsonObject());
-                        save(temp);
-                        //save(jpegBytes);
 
-                        // TEST the writer
-                        writer.write(packJSON.jsonObject());
-                        Log.e("SSSS", String.valueOf(packJSON.jsonObject()));
-                       // write the bytes to file.
+                        // add the image bytes data to a JSON object
+                        PackJson packJSON = new PackJson(jpegBytes); // JSON Object instance
+                        packJSON.insertJsonObject();
+                        byte[] temp = getData(packJSON.jsonObject());
+                        // To save the oringinal bytes
+                        // save(jpegBytes);
+                        save(temp);
+
+                        // write the bytes to file.
                         try {
                             writeToFile(packJSON.jsonObject().toString(2));
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }// end write the bytes to file
-                        //insertJsonObject("Image",Base64Encoding(jpegBytes));
+
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -448,7 +393,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     @Override
     protected void onPause() {
         Log.e(TAG, "onPause");
-        //closeCamera();
+        closeCamera();
         stopBackgroundThread();
         super.onPause();
     }
@@ -481,12 +426,13 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }// end of  test JSONObject on a txt file
 
-
     // test JSONObject on a txt file
     private byte[] getData(JSONObject jsonData) {
             byte[] bytes = null;
         try {
             String temp =jsonData.getString("Image");
+            // test the decoding data
+            // writeToFile(new String(Base64.decode(temp, Base64.DEFAULT)));
             return Base64.decode(temp,Base64.DEFAULT);
         } catch (JSONException e) {
             e.printStackTrace();

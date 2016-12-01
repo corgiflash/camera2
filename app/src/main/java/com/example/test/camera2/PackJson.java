@@ -11,6 +11,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Date;
 
 /**
@@ -25,21 +26,28 @@ public class PackJson {
     JSONObject JsonData = new JSONObject();
     // read the json
     private ImageData imageData;
+    private Writer writer;
 
-    PackJson() {
+    PackJson(byte[] bytes) {
         this.name = "Image";
+        this.bytes = bytes;
+        try {
+            writer = new Writer(9876);
+            InetAddress ipaddress = InetAddress.getByName("172.28.184.169");
+            writer.addAddress(ipaddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
-    // Add imageBytes
-    public void addImageBytes(byte[] bytes) {
-        this.bytes = bytes;
-    }
 
     // Add a JSON Object
     // JPEG or RAW imagebytes code convert to ASCII base64
     public void insertJsonObject() {
         try {
             JsonData.put(name, Base64Encoding(bytes));
+
             //JsonData.put(date.toString(), Base64Encoding(bytes));
             //JsonData.put(name+"_"+count, Base64Encoding(bytes));
             // count++;
