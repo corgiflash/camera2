@@ -16,6 +16,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -33,6 +34,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.appindexing.Thing;
+import com.google.android.gms.common.api.GoogleApiClient;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -47,10 +53,12 @@ import java.io.OutputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+
 public class AndroidCameraApi extends AppCompatActivity {
     private static final String TAG = "AndroidCameraApi";
     private Button takePictureButton;
@@ -76,8 +84,13 @@ public class AndroidCameraApi extends AppCompatActivity {
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private byte[] jpegBytes;
-    private Date date;
     private File file;
+    private String timeStamp;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +110,9 @@ public class AndroidCameraApi extends AppCompatActivity {
         // create a instance of udp connection
 
 
-
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -200,11 +215,11 @@ public class AndroidCameraApi extends AppCompatActivity {
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
             // create the file name save to directory
-            date = new Date();
             String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/Camera/";
             File newdir = new File(directory);
             newdir.mkdirs();
-            String filename = date.toString() + ".jpg";
+            timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            String filename = timeStamp + ".jpg";
             final File file = new File(directory + filename);
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
@@ -407,7 +422,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             newdir.mkdirs();
             /* cut the part of time as name of file(ex. Tue Nov 15 10:25:54( PST 2016))
             String time = date.toString().substring(0, 19);*/
-            String filename = date.toString() + ".txt";
+            String filename = timeStamp + ".txt";
             File file = new File(directory + filename);
 
             // if file doesnt exists, then create it
@@ -428,15 +443,51 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     // test JSONObject on a txt file
     private byte[] getData(JSONObject jsonData) {
-            byte[] bytes = null;
+        byte[] bytes = null;
         try {
-            String temp =jsonData.getString("Image");
+            String temp = jsonData.getString("Image");
             // test the decoding data
             // writeToFile(new String(Base64.decode(temp, Base64.DEFAULT)));
-            return Base64.decode(temp,Base64.DEFAULT);
+            return Base64.decode(temp, Base64.DEFAULT);
         } catch (JSONException e) {
             e.printStackTrace();
             return bytes;
         }
     }// end of  test JSONObject on a txt file
+
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    public Action getIndexApiAction() {
+        Thing object = new Thing.Builder()
+                .setName("AndroidCameraApi Page") // TODO: Define a title for the content shown.
+                // TODO: Make sure this auto-generated URL is correct.
+                .setUrl(Uri.parse("http://[ENTER-YOUR-URL-HERE]"))
+                .build();
+        return new Action.Builder(Action.TYPE_VIEW)
+                .setObject(object)
+                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
+                .build();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        AppIndex.AppIndexApi.start(client, getIndexApiAction());
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        AppIndex.AppIndexApi.end(client, getIndexApiAction());
+        client.disconnect();
+    }
 }
