@@ -16,7 +16,6 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -34,24 +33,20 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
 import com.google.android.gms.common.api.GoogleApiClient;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -86,6 +81,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private byte[] jpegBytes;
     private File file;
     private String timeStamp;
+    private ImageReceiver imageReceiver;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -196,8 +192,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                 Size[] thumbnailsizes = characteristics.get(CameraCharacteristics.JPEG_AVAILABLE_THUMBNAIL_SIZES);
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            // The resolution: 1920x1080 (1080p)
-            // Other Options: 1280x720 (720p) 640x480 (480p) 320x240 (240p)
+            // Resolution: 1920x1080 (1080p)
             int width = 1920;
             int height = 1080;
             if (jpegSizes != null && 0 < jpegSizes.length) {
@@ -235,16 +230,15 @@ public class AndroidCameraApi extends AppCompatActivity {
                         buffer.get(jpegBytes);
 
                         // add the image bytes data to a JSON object
-                        PackJson packJSON = new PackJson(jpegBytes); // JSON Object instance
-                        packJSON.insertJsonObject();
-                        byte[] temp = getData(packJSON.jsonObject());
-                        // To save the oringinal bytes
-                        // save(jpegBytes);
-                        save(temp);
+                        SendJson sendJSON = new SendJson(jpegBytes); // JSON Object instance
+                        imageReceiver = new ImageReceiver(sendJSON.getJsonData(),sendJSON.getName());
+                        byte[] bytes = imageReceiver.getData();
+                        save(bytes);
+                        //save(jpegBytes);
 
-                        // write the bytes to file.
+                        //write the bytes to file.
                         try {
-                            writeToFile(packJSON.jsonObject().toString(2));
+                            writeToFile(sendJSON.getJsonData().toString(2));
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }// end write the bytes to file
@@ -272,7 +266,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                         }
                     }
                 }
-            }; // jpeg end
+            }; // Save to the external storage
 
             reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
@@ -280,7 +274,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
                     Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
-                    createCameraPreview();
+                    createCameraPreview();// optional
                 }
             };
 
@@ -302,7 +296,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
+    // optional function
     protected void createCameraPreview() {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
@@ -337,8 +331,6 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-
-
         Log.e(TAG, "is camera open");
         try {
             cameraId = manager.getCameraIdList()[0];
@@ -413,7 +405,6 @@ public class AndroidCameraApi extends AppCompatActivity {
         super.onPause();
     }
 
-
     // test JSONObject on a txt file
     private void writeToFile(String content) {
         try {
@@ -441,53 +432,4 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }// end of  test JSONObject on a txt file
 
-    // test JSONObject on a txt file
-    private byte[] getData(JSONObject jsonData) {
-        byte[] bytes = null;
-        try {
-            String temp = jsonData.getString("Image");
-            // test the decoding data
-            // writeToFile(new String(Base64.decode(temp, Base64.DEFAULT)));
-            return Base64.decode(temp, Base64.DEFAULT);
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return bytes;
-        }
-    }// end of  test JSONObject on a txt file
-
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    public Action getIndexApiAction() {
-        Thing object = new Thing.Builder()
-                .setName("AndroidCameraApi Page") // TODO: Define a title for the content shown.
-                // TODO: Make sure this auto-generated URL is correct.
-                .setUrl(Uri.parse("http://[ENTER-YOUR-URL-HERE]"))
-                .build();
-        return new Action.Builder(Action.TYPE_VIEW)
-                .setObject(object)
-                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
-                .build();
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.connect();
-        AppIndex.AppIndexApi.start(client, getIndexApiAction());
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.end(client, getIndexApiAction());
-        client.disconnect();
-    }
 }
