@@ -1,18 +1,15 @@
 package com.example.test.camera2;
 
-/**
- * Created by xuejing on 2016/11/17.
- */
-
 import android.os.AsyncTask;
 import android.support.v4.os.AsyncTaskCompat;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -22,23 +19,25 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 
 public class Reader extends AsyncTask<Void, Void, Void> {
+    private final String THREAD_NAME = "Reader";
+
+
     /**
      * Default packet size, needs to be large enough to accept most JSON strings.
      */
-    private static final int PACKET_SIZE = 5 * 1024; // 5k
-
+    private static final int MAX_PACKET_SIZE = 64 * 1024; // 5k
     /**
      * Buffer to store received JSON strings
      */
     private final LinkedBlockingQueue<JsonObject> buffer = new LinkedBlockingQueue<>();
     private final DatagramSocket socket;
-    private final Gson gson = new Gson();
+    private final JsonParser parser = new JsonParser();
 
     /**
      * @param port Port that packets are sent to.
      * @throws IOException
      */
-    public Reader(int port) throws IOException {
+    public Reader(int port) throws SocketException {
         super();
         socket = new DatagramSocket(port);
         socket.setSoTimeout(0);
@@ -48,14 +47,15 @@ public class Reader extends AsyncTask<Void, Void, Void> {
 
     @Override
     protected Void doInBackground(Void... voids) {
+        Thread.currentThread().setName(THREAD_NAME);
+        DatagramPacket packet = new DatagramPacket(new byte[MAX_PACKET_SIZE], MAX_PACKET_SIZE);
         try {
             while (!isCancelled()) {
-                DatagramPacket packet = new DatagramPacket(new byte[PACKET_SIZE], PACKET_SIZE);
                 socket.receive(packet);
 
                 //Convert received packet to String after trimming the trailing space.
-                String jsonString = new String(packet.getData()).trim();
-                buffer.put(gson.fromJson(jsonString, JsonObject.class));
+                String jsonString = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                buffer.put(parser.parse(jsonString).getAsJsonObject());
             }
         } catch (IOException | InterruptedException e) {
             if (!isCancelled())
@@ -92,5 +92,11 @@ public class Reader extends AsyncTask<Void, Void, Void> {
      */
     public void clear() {
         buffer.clear();
+    }
+
+    public JsonObject[] readAll() {
+        JsonObject[] inputs = buffer.toArray(new JsonObject[0]);
+        buffer.clear();
+        return inputs;
     }
 }

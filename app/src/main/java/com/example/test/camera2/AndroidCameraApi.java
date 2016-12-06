@@ -24,7 +24,6 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -34,12 +33,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.common.api.GoogleApiClient;
-
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -56,9 +50,8 @@ import java.util.Date;
 import java.util.List;
 
 public class AndroidCameraApi extends AppCompatActivity {
+    private static final int REQUEST_CAMERA_PERMISSION = 200;
     private static final String TAG = "AndroidCameraApi";
-    private Button takePictureButton,previewButton;
-    private TextureView textureView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
     static {
@@ -68,57 +61,21 @@ public class AndroidCameraApi extends AppCompatActivity {
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
 
-    private String cameraId;
-    protected CameraDevice cameraDevice;
-    protected CameraCaptureSession cameraCaptureSessions;
-    protected CaptureRequest captureRequest;
-    protected CaptureRequest.Builder captureRequestBuilder;
-    private Size imageDimension;
-    private ImageReader imageReader;
-    private static final int REQUEST_CAMERA_PERMISSION = 200;
-    private boolean mFlashSupported;
-    private Handler mBackgroundHandler;
-    private HandlerThread mBackgroundThread;
     private byte[] jpegBytes;
-    private File file;
+    private Size imageDimension;
+    private Button takePictureButton, previewButton;
+    private String cameraId;
     private String timeStamp;
+    private Handler mBackgroundHandler;
+    private ImageReader imageReader;
+    private TextureView textureView;
     private ImageReceiver imageReceiver;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    private GoogleApiClient client;
+    private HandlerThread mBackgroundThread;
+    private CameraDevice cameraDevice;
+    private CameraCaptureSession cameraCaptureSessions;
+    private CaptureRequest.Builder captureRequestBuilder;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_android_camera_api);
-        textureView = (TextureView) findViewById(R.id.texture);
-        assert textureView != null;
-        textureView.setSurfaceTextureListener(textureListener);
-        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
-        assert takePictureButton != null;
-        takePictureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                takePicture();
-            }
-        });
-
-        // create the button for receive picture
-        previewButton = (Button) findViewById(R.id.btn_preview);
-        assert previewButton != null;
-        previewButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {createPreview();}});
-
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
-    }
-
-    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+    private TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             //open your camera here
@@ -139,6 +96,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         }
     };
+
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {
@@ -159,15 +117,20 @@ public class AndroidCameraApi extends AppCompatActivity {
             cameraDevice = null;
         }
     };
-    // Pause for the the saving status
-    final CameraCaptureSession.CaptureCallback captureCallbackListener = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            super.onCaptureCompleted(session, request, result);
-            Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
-            createCameraPreview();
-        }
-    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_android_camera_api);
+
+        textureView = (TextureView) findViewById(R.id.texture);
+        assert textureView != null;
+        textureView.setSurfaceTextureListener(textureListener);
+
+        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
+        previewButton = (Button) findViewById(R.id.btn_preview);
+        assert previewButton != null && takePictureButton != null;
+    }
 
     protected void startBackgroundThread() {
         mBackgroundThread = new HandlerThread("Camera Background");
@@ -186,19 +149,16 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }
 
-    protected void takePicture() {
-        if (null == cameraDevice) {
+    public void takePicture(View v) {
+        if (cameraDevice == null) {
             Log.e(TAG, "cameraDevice is null");
             return;
         }
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
-            Size[] jpegSizes = null;
-            if (characteristics != null) {
-                Size[] thumbnailsizes = characteristics.get(CameraCharacteristics.JPEG_AVAILABLE_THUMBNAIL_SIZES);
-                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
-            }
+            Size[] jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+
             // Resolution: 1920x1080 (1080p)
             int width = 1920;
             int height = 1080;
@@ -206,8 +166,9 @@ public class AndroidCameraApi extends AppCompatActivity {
                 width = jpegSizes[7].getWidth();
                 height = jpegSizes[7].getHeight();
             }
+
             ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
-            List<Surface> outputSurfaces = new ArrayList<Surface>(2);
+            List<Surface> outputSurfaces = new ArrayList<>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -238,7 +199,7 @@ public class AndroidCameraApi extends AppCompatActivity {
 
                         // add the image bytes data to a JSON object
                         SendJson sendJSON = new SendJson(jpegBytes); // JSON Object instance
-                        imageReceiver = new ImageReceiver(sendJSON.getJsonData(),sendJSON.getName());
+                        imageReceiver = new ImageReceiver(sendJSON.getJsonData(), sendJSON.getName());
                         byte[] bytes = imageReceiver.getData();
                         save(bytes);
                         //save(jpegBytes);
@@ -303,12 +264,13 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
     // optional function
     protected void createCameraPreview() {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
             assert texture != null;
-            // get the camera's supported output sizes and formats
+            // set the camera's supported output sizes and formats
             texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -413,10 +375,9 @@ public class AndroidCameraApi extends AppCompatActivity {
     }
 
 
-    protected void createPreview(){
-        Intent previewPage = new Intent(this,Preview.class);
+    public void createPreview(View v) {
+        Intent previewPage = new Intent(this, Preview.class);
         startActivity(previewPage);
-
     }
 
     // test JSONObject on a txt file
@@ -444,6 +405,6 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
 
         }
-    }// end of  test JSONObject on a txt file
+    }
 
 }

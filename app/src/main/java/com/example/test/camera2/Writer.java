@@ -1,20 +1,18 @@
 package com.example.test.camera2;
 
-
-/**
- * Created by xuejing on 2016/11/17.
- */
-
 import android.os.AsyncTask;
 import android.support.v4.os.AsyncTaskCompat;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -25,15 +23,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Writer extends AsyncTask<Void, Void, Void> {
     private final int PORT;
     private final DatagramSocket socket;
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final ArrayList<InetAddress> addresses = new ArrayList<>();
     private final LinkedBlockingQueue<Object> requests = new LinkedBlockingQueue<>();
+    private final String THREAD_NAME = "Writer";
 
     /**
      * @param port The port that the packets will be sent to.
      * @throws IOException
      */
-    public Writer(int port) throws IOException {
+    public Writer(int port) throws SocketException {
         super();
         this.PORT = port;
         this.socket = new DatagramSocket();
@@ -42,10 +41,16 @@ public class Writer extends AsyncTask<Void, Void, Void> {
 
     @Override
     protected Void doInBackground(Void... voids) {
+        Thread.currentThread().setName(THREAD_NAME);
         try {
             while (!isCancelled()) {
                 //Convert object to JSON then byte array to send
-                byte[] bytes = gson.toJson(requests.take()).getBytes();
+                byte[] bytes;
+                Object obj = requests.take();
+                if (obj instanceof JSONObject)
+                    bytes = obj.toString().getBytes();
+                else
+                    bytes = gson.toJson(obj).getBytes();
                 DatagramPacket packet = new DatagramPacket(bytes, bytes.length);
                 packet.setPort(PORT);
 
@@ -68,8 +73,19 @@ public class Writer extends AsyncTask<Void, Void, Void> {
         else requests.clear();
     }
 
+    public void disconnect(Object item) {
+        try {
+            this.write(item); //write packet with disconnect message
+            while(!requests.isEmpty()) Thread.sleep(299);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     /**
      * Adds item to the blocking queue.
+     *
      * @param item Object will be added to blocking queue then converted
      *             to JSON before being sent as a byte array to all addresses.
      * @throws IOException Writer is cancelled, not running, or has no addresses to write to.
@@ -82,7 +98,7 @@ public class Writer extends AsyncTask<Void, Void, Void> {
         requests.add(item);
     }
 
-    public boolean hasAddress() {
+    public boolean hasAddresses() {
         return !addresses.isEmpty();
     }
 
