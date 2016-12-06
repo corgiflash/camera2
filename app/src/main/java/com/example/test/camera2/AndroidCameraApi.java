@@ -2,6 +2,7 @@ package com.example.test.camera2;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
@@ -56,7 +57,7 @@ import java.util.List;
 
 public class AndroidCameraApi extends AppCompatActivity {
     private static final String TAG = "AndroidCameraApi";
-    private Button takePictureButton;
+    private Button takePictureButton,previewButton;
     private TextureView textureView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
@@ -103,7 +104,13 @@ public class AndroidCameraApi extends AppCompatActivity {
                 takePicture();
             }
         });
-        // create a instance of udp connection
+
+        // create the button for receive picture
+        previewButton = (Button) findViewById(R.id.btn_preview);
+        assert previewButton != null;
+        previewButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {createPreview();}});
 
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
@@ -403,6 +410,13 @@ public class AndroidCameraApi extends AppCompatActivity {
         closeCamera();
         stopBackgroundThread();
         super.onPause();
+    }
+
+
+    protected void createPreview(){
+        Intent previewPage = new Intent(this,Preview.class);
+        startActivity(previewPage);
+
     }
 
     // test JSONObject on a txt file

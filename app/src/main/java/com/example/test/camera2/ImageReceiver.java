@@ -18,6 +18,7 @@ public class ImageReceiver {
     private JSONArray jsonArray;
     private JSONObject jsonObject;
     private String name;
+    
     public ImageReceiver(JSONObject jsonData, String name){
         this.jsonObject = jsonData;
         this.name = name;
